@@ -1,0 +1,45 @@
+#!/bin/bash
+# use bash strict mode
+set -euo pipefail
+
+# check if project name is provided
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <project-name>" >&2
+    exit 1
+fi
+
+# check if project name is used
+if [[ -n $(docker compose ls | grep $1) ]]; then
+    echo $(docker compose ls | grep -C 100 $1) >&2
+    echo "Project name $1 is already in use" >&2
+    exit 1
+fi
+
+# find empty port (start from 8787)
+PORT=8787
+while :; do
+    if [[ -n $(ss -tulpn | grep :$PORT) ]]; then
+        PORT=$(( $PORT + 1 ))
+    else
+        break
+    fi
+done
+
+# make .env file
+echo "# created $(date +%Y%m%d-%H:%M:%S)" > .env
+echo "TZ=$(cat /etc/timezone)" >> .env
+echo "USERID=$(id -u)" >> .env
+echo "GROUPID=$(id -g)" >> .env
+echo "LOCAL=$HOME" >> .env
+echo "PORT=$PORT" >> .env
+echo "COMPOSE_PROJECT_NAME=$1" >> .env
+
+# start docker compose
+docker compose up -d 
+echo -e "Notes:\n\tStarting Rstudio server at: http://localhost:$PORT" >&2
+echo -e "\tTo stop the server, run: `docker compose down`" >&2
+echo -e "\tTo see logs, run: `docker compose logs -f`" >&2
+echo -e "\tDocker compose commands should be run in the same directory as the compose file\n" >&2
+echo "Streaming logs... [Ctrl+C to exit]" >&2
+docker compose logs -f
+    

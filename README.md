@@ -9,5 +9,5 @@ git clone https://github.com/jerry955071/rstudio-server.git
 
 3. Start a Rstudio server by running run.sh
 ```
-bash run.sh
+./start-server <project-name>
 ```

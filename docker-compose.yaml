@@ -1,0 +1,16 @@
+version: '3.6'
+services:
+  server:
+    build:
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: /init
+    environment:
+      - TZ=${TZ}
+      - USERID=${USERID}
+      - GROUPID=${GROUPID}
+      - DISABLE_AUTH=true
+    volumes:
+      - ${LOCAL}:/home/rstudio/local:rw
+    ports:
+      - ${PORT}:8787

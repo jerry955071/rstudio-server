@@ -7,8 +7,7 @@ git clone https://github.com/jerry955071/rstudio-server.git
 
 2. Modify the Dockerfile if needed
 
-3. Start a Rstudio server by executing "start-server"
-project name should be consist of lowercase, decimal digits, dashes, and underscores
+3. Start a RStudio server by executing "start-server"  
 ```
 ./start-server <project-name>
 ```

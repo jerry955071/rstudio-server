@@ -1,6 +1,8 @@
 #!/bin/bash
 # use bash strict mode
 set -euo pipefail
+IFS=$'\n\t'
+
 
 # check if project name is provided
 if [[ $# -ne 1 ]]; then
@@ -15,6 +17,13 @@ if [[ -n $(docker compose ls | grep $1) ]]; then
     exit 1
 fi
 
+# check if project name is a valid docker-compose project name
+if [[ ! $1 =~ ^[a-z0-9_-]+$ ]]; then
+    echo "'$1' is not a valid docker-compose project name" >&2
+    echo "Project name should be consist of lowercase, decimal digits, dashes, and underscores" >&2
+    exit 1
+fi
+
 # find empty port (start from 8787)
 PORT=8787
 while :; do
@@ -25,21 +34,53 @@ while :; do
     fi
 done
 
-# make .env file
+# make docker-compose file
+echo "# created $(date +%Y%m%d-%H:%M:%S)" > docker-compose.yaml
+echo """\
+version: '3.6'
+services:
+  server:
+    build:
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: /init
+    environment:
+      - TZ=$(cat /etc/timezone)
+      - USERID=$(id -u)
+      - GROUPID=$(id -g)
+      - DISABLE_AUTH=true
+    ports:
+      - ${PORT}:8787
+    volumes:""" >> docker-compose.yaml
+# mount $HOME to /home/rstudio/local
+echo \
+"""\
+      - $HOME:/home/rstudio/local:rw\
+""" >> docker-compose.yaml
+
+# mount all symlinks under $HOME to /home/rstudio/<symlink-name>
+for symlink in $(find $HOME -type l); do
+    echo "      - $(readlink -f $symlink):/home/rstudio/local/$(basename $symlink):rw" >> docker-compose.yaml
+done
+
+
 echo "# created $(date +%Y%m%d-%H:%M:%S)" > .env
-echo "TZ=$(cat /etc/timezone)" >> .env
-echo "USERID=$(id -u)" >> .env
-echo "GROUPID=$(id -g)" >> .env
-echo "LOCAL=$HOME" >> .env
-echo "PORT=$PORT" >> .env
+# echo "TZ=$(cat /etc/timezone)" >> .env
+# echo "USERID=$(id -u)" >> .env
+# echo "GROUPID=$(id -g)" >> .env
+# echo "LOCAL=$HOME" >> .env
+# echo "PORT=$PORT" >> .env
 echo "COMPOSE_PROJECT_NAME=$1" >> .env
 
+
+
 # start docker compose
-docker compose up -d 
-echo -e "Notes:\n\tStarting Rstudio server at: http://localhost:$PORT" >&2
-echo -e "\tTo stop the server, run: `docker compose down`" >&2
-echo -e "\tTo see logs, run: `docker compose logs -f`" >&2
-echo -e "\tDocker compose commands should be run in the same directory as the compose file\n" >&2
-echo "Streaming logs... [Ctrl+C to exit]" >&2
+docker compose up -d
+echo -e 'Notes:\n'
+echo -e "\tStarting Rstudio server at: \033[0;32mhttp://localhost:$PORT\033[0m" >&2
+echo -e '\tTo stop the server, run: \033[0;32mdocker compose down\033[0m' >&2
+echo -e '\tTo see logs, run: \033[0;32mdocker compose logs -f\033[0m' >&2
+echo -e '\tDocker compose commands should be run in the same directory as the compose file\n' >&2
+echo 'Streaming logs... [Ctrl+C to stop streaming logs]' >&2
 docker compose logs -f
     

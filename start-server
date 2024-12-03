@@ -4,22 +4,24 @@ set -euo pipefail
 IFS=$'\n\t'
 
 
-# check if project name is provided
-if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 <project-name>" >&2
+# check if project name and work dir is provided
+if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <project-name> <work-dir>" >&2
     exit 1
 fi
+PROJECT_NAME=$1
+WORK_DIR=$2
 
 # check if project name is used
-if [[ -n $(docker compose ls | grep $1) ]]; then
-    echo $(docker compose ls | grep -C 100 $1) >&2
-    echo "Project name $1 is already in use" >&2
+if [[ -n $(docker compose ls | grep $WORK_DIR) ]]; then
+    echo $(docker compose ls | grep -C 100 $WORK_DIR) >&2
+    echo "Project name $WORK_DIR is already in use" >&2
     exit 1
 fi
 
 # check if project name is a valid docker-compose project name
-if [[ ! $1 =~ ^[a-z0-9_-]+$ ]]; then
-    echo "'$1' is not a valid docker-compose project name" >&2
+if [[ ! $WORK_DIR =~ ^[a-z0-9_-]+$ ]]; then
+    echo "'$WORK_DIR' is not a valid docker-compose project name" >&2
     echo "Project name should be consist of lowercase, decimal digits, dashes, and underscores" >&2
     exit 1
 fi
@@ -52,14 +54,14 @@ services:
     ports:
       - ${PORT}:8787
     volumes:""" >> docker-compose.yaml
-# mount $HOME to /home/rstudio/local
+# mount $WORK_DIR to /home/rstudio/local
 echo \
 """\
-      - $HOME:/home/rstudio/local:rw\
+      - $WORK_DIR:/home/rstudio/local:rw\
 """ >> docker-compose.yaml
 
-# mount all symlinks under $HOME to /home/rstudio/<symlink-name>
-for symlink in $(find $HOME -type l); do
+# mount all symlinks under $WORK_DIR to /home/rstudio/<symlink-name>
+for symlink in $(find $WORK_DIR -type l); do
     echo "      - $(readlink -f $symlink):/home/rstudio/local/$(basename $symlink):rw" >> docker-compose.yaml
 done
 
@@ -68,9 +70,9 @@ echo "# created $(date +%Y%m%d-%H:%M:%S)" > .env
 # echo "TZ=$(cat /etc/timezone)" >> .env
 # echo "USERID=$(id -u)" >> .env
 # echo "GROUPID=$(id -g)" >> .env
-# echo "LOCAL=$HOME" >> .env
+# echo "LOCAL=$WORK_DIR" >> .env
 # echo "PORT=$PORT" >> .env
-echo "COMPOSE_PROJECT_NAME=$1" >> .env
+echo "COMPOSE_PROJECT_NAME=$WORK_DIR" >> .env
 
 
 

@@ -13,15 +13,15 @@ PROJECT_NAME=$1
 WORK_DIR=$2
 
 # check if project name is used
-if [[ -n $(docker compose ls | grep $WORK_DIR) ]]; then
-    echo $(docker compose ls | grep -C 100 $WORK_DIR) >&2
-    echo "Project name $WORK_DIR is already in use" >&2
+if [[ -n $(docker compose ls -q | grep -sw "$PROJECT_NAME") ]]; then
+    echo -e "Project name $PROJECT_NAME is already in use!\nSee \`docker compose ls\` output:" >&2
+    docker compose ls | grep --color=always -swz $PROJECT_NAME >&2
     exit 1
 fi
 
 # check if project name is a valid docker-compose project name
-if [[ ! $WORK_DIR =~ ^[a-z0-9_-]+$ ]]; then
-    echo "'$WORK_DIR' is not a valid docker-compose project name" >&2
+if [[ ! $PROJECT_NAME =~ ^[a-z0-9_-]+$ ]]; then
+    echo "'$PROJECT_NAME' is not a valid docker-compose project name" >&2
     echo "Project name should be consist of lowercase, decimal digits, dashes, and underscores" >&2
     exit 1
 fi
@@ -72,7 +72,7 @@ echo "# created $(date +%Y%m%d-%H:%M:%S)" > .env
 # echo "GROUPID=$(id -g)" >> .env
 # echo "LOCAL=$WORK_DIR" >> .env
 # echo "PORT=$PORT" >> .env
-echo "COMPOSE_PROJECT_NAME=$WORK_DIR" >> .env
+echo "COMPOSE_PROJECT_NAME=$PROJECT_NAME" >> .env
 
 
 
